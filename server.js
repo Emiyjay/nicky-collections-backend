@@ -12,18 +12,28 @@ connectDB();
 const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
+const allowedOrigins = (process.env.FRONTEND_URL || '*')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: '*',
+  origin: allowedOrigins.length === 1 && allowedOrigins[0] === '*'
+    ? '*'
+    : allowedOrigins,
   credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.options('*', cors());
@@ -37,6 +47,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Nicky Collections API running 🛍️' });

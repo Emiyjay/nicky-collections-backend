@@ -19,6 +19,13 @@ const productSchema = new mongoose.Schema({
     trim: true,
     maxlength: [200, 'Name too long']
   },
+  slug: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    sparse: true,
+    index: true
+  },
   description: {
     type: String,
     required: [true, 'Description is required']
@@ -93,7 +100,6 @@ const productSchema = new mongoose.Schema({
   }
 });
 
-// Update rating when reviews change
 productSchema.methods.updateRating = function() {
   if (this.reviews.length === 0) {
     this.rating = 0;
@@ -104,7 +110,6 @@ productSchema.methods.updateRating = function() {
   }
 };
 
-// Text search index
 productSchema.index({ name: 'text', description: 'text', brand: 'text', tags: 'text' });
 
 module.exports = mongoose.model('Product', productSchema);

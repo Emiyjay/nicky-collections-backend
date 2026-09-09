@@ -12,6 +12,16 @@ const reviewSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const slugify = (value = '') => value
+  .toString()
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 120);
+
 const productSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -35,19 +45,13 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Price is required'],
     min: [0, 'Price cannot be negative']
   },
-  comparePrice: {
-    type: Number,
-    default: null
-  },
+  comparePrice: { type: Number, default: null },
   category: {
     type: String,
     required: [true, 'Category is required'],
     enum: ['footwear', 'outerwear', 'accessories', 'clothing', 'collectibles', 'other']
   },
-  brand: {
-    type: String,
-    default: ''
-  },
+  brand: { type: String, default: '' },
   images: [{
     url: { type: String, required: true },
     public_id: { type: String, default: '' },
@@ -61,43 +65,21 @@ const productSchema = new mongoose.Schema({
   colors: [{ type: String }],
   sizes: [{ type: String }],
   tags: [{ type: String }],
-  inStock: {
-    type: Boolean,
-    default: true
-  },
-  stockCount: {
-    type: Number,
-    default: 0
-  },
-  isFeatured: {
-    type: Boolean,
-    default: false
-  },
-  isNewArrival: {
-    type: Boolean,
-    default: true
-  },
+  inStock: { type: Boolean, default: true },
+  stockCount: { type: Number, default: 0 },
+  isFeatured: { type: Boolean, default: false },
+  isNewArrival: { type: Boolean, default: true },
   reviews: [reviewSchema],
-  rating: {
-    type: Number,
-    default: 0
-  },
-  numReviews: {
-    type: Number,
-    default: 0
-  },
-  tiktokLink: {
-    type: String,
-    default: ''
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  rating: { type: Number, default: 0 },
+  numReviews: { type: Number, default: 0 },
+  tiktokLink: { type: String, default: '' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+productSchema.pre('validate', function(next) {
+  if (!this.slug && this.name) this.slug = slugify(this.name);
+  next();
 });
 
 productSchema.methods.updateRating = function() {

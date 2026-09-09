@@ -27,7 +27,7 @@ exports.updateSettings = async (req, res) => {
 
     const settings = await SiteSettings.findOneAndUpdate(
       { singleton: 'primary' },
-      { $set: updates, $setOnInsert: { singleton: 'primary' }, updatedBy: req.user._id },
+      { $set: { ...updates, updatedBy: req.user._id }, $setOnInsert: { singleton: 'primary' } },
       { new: true, upsert: true, runValidators: true }
     ).select(PUBLIC_FIELDS);
 

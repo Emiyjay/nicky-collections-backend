@@ -3,9 +3,28 @@ const Product = require('../models/Product');
 // @GET /api/products
 exports.getProducts = async (req, res) => {
   try {
-    const { category, search, sort, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
+    const {
+      category,
+      brand,
+      search,
+      sort,
+      minPrice,
+      maxPrice,
+      isFeatured,
+      isNewArrival,
+      onSale,
+      page = 1,
+      limit = 12,
+    } = req.query;
     const query = {};
+
     if (category && category !== 'all') query.category = category;
+    if (brand) query.brand = brand;
+    if (isFeatured === 'true' || isFeatured === 'false') query.isFeatured = isFeatured === 'true';
+    if (isNewArrival === 'true' || isNewArrival === 'false') query.isNewArrival = isNewArrival === 'true';
+    if (onSale === 'true') {
+      query.$expr = { $gt: ['$comparePrice', '$price'] };
+    }
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);

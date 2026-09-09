@@ -1,11 +1,7 @@
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   rating: { type: Number, required: true, min: 1, max: 5 },
   comment: { type: String, required: true },
@@ -23,45 +19,15 @@ const slugify = (value = '') => value
   .slice(0, 120);
 
 const productSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Product name is required'],
-    trim: true,
-    maxlength: [200, 'Name too long']
-  },
-  slug: {
-    type: String,
-    trim: true,
-    lowercase: true,
-    sparse: true,
-    index: true
-  },
-  description: {
-    type: String,
-    required: [true, 'Description is required']
-  },
-  price: {
-    type: Number,
-    required: [true, 'Price is required'],
-    min: [0, 'Price cannot be negative']
-  },
+  name: { type: String, required: [true, 'Product name is required'], trim: true, maxlength: [200, 'Name too long'] },
+  slug: { type: String, trim: true, lowercase: true, sparse: true, index: true },
+  description: { type: String, required: [true, 'Description is required'] },
+  price: { type: Number, required: [true, 'Price is required'], min: [0, 'Price cannot be negative'] },
   comparePrice: { type: Number, default: null },
-  category: {
-    type: String,
-    required: [true, 'Category is required'],
-    enum: ['footwear', 'outerwear', 'accessories', 'clothing', 'collectibles', 'other']
-  },
+  category: { type: String, required: [true, 'Category is required'], enum: ['footwear', 'outerwear', 'accessories', 'clothing', 'collectibles', 'other'] },
   brand: { type: String, default: '' },
-  images: [{
-    url: { type: String, required: true },
-    public_id: { type: String, default: '' },
-    alt: { type: String, default: '' }
-  }],
-  videos: [{
-    url: { type: String },
-    public_id: { type: String, default: '' },
-    thumbnail: { type: String, default: '' }
-  }],
+  images: [{ url: { type: String, required: true }, public_id: { type: String, default: '' }, alt: { type: String, default: '' } }],
+  videos: [{ url: { type: String }, public_id: { type: String, default: '' }, thumbnail: { type: String, default: '' } }],
   colors: [{ type: String }],
   sizes: [{ type: String }],
   tags: [{ type: String }],
@@ -77,8 +43,12 @@ const productSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-productSchema.pre('validate', function(next) {
-  if (!this.slug && this.name) this.slug = slugify(this.name);
+productSchema.pre('validate', async function(next) {
+  if (!this.slug && this.name) {
+    const baseSlug = slugify(this.name) || `product-${this._id.toString().slice(-8)}`;
+    const existing = await this.constructor.findOne({ slug: baseSlug, _id: { $ne: this._id } }).select('_id');
+    this.slug = existing ? `${baseSlug}-${this._id.toString().slice(-6)}` : baseSlug;
+  }
   next();
 });
 

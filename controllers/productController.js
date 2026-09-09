@@ -23,11 +23,7 @@ exports.getProducts = async (req, res) => {
     const limitNumber = Math.min(Math.max(Number(limit) || 12, 1), 50);
     const skip = (pageNumber - 1) * limitNumber;
     const total = await Product.countDocuments(query);
-    const products = await Product.find(query)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(limitNumber)
-      .select('-reviews');
+    const products = await Product.find(query).sort(sortOption).skip(skip).limit(limitNumber).select('-reviews');
 
     res.json({ products, page: pageNumber, pages: Math.ceil(total / limitNumber), total });
   } catch (err) {
@@ -48,8 +44,7 @@ exports.getFeatured = async (req, res) => {
 // @GET /api/products/slug/:slug
 exports.getProductBySlug = async (req, res) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug })
-      .populate('reviews.user', 'name avatar');
+    const product = await Product.findOne({ slug: req.params.slug }).populate('reviews.user', 'name avatar');
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);
   } catch (err) {
@@ -67,11 +62,7 @@ exports.getRelatedProducts = async (req, res) => {
     if (product.brand) or.push({ brand: product.brand });
     if (product.tags?.length) or.push({ tags: { $in: product.tags } });
 
-    const related = await Product.find({
-      _id: { $ne: product._id },
-      inStock: true,
-      $or: or
-    })
+    const related = await Product.find({ _id: { $ne: product._id }, inStock: true, $or: or })
       .select('-reviews')
       .sort({ isFeatured: -1, rating: -1, createdAt: -1 })
       .limit(8);
@@ -85,13 +76,19 @@ exports.getRelatedProducts = async (req, res) => {
 // @GET /api/products/:id
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate('reviews.user', 'name avatar');
+    const identifier = req.params.id;
+    const query = Product.findById(identifier).populate('reviews.user', 'name avatar');
+    const product = mongooseSafeObjectId(identifier)
+      ? await query
+      : await Product.findOne({ slug: identifier }).populate('reviews.user', 'name avatar');
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
+const mongooseSafeObjectId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value));
 
 // @POST /api/products/:id/reviews
 exports.addReview = async (req, res) => {

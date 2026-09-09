@@ -56,7 +56,11 @@ exports.getFeatured = async (req, res) => {
 // @GET /api/products/:id/related
 exports.getRelatedProducts = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).select('category brand tags');
+    const identifier = req.params.id;
+    const isObjectId = /^[a-f\d]{24}$/i.test(identifier);
+    const product = await Product.findOne(isObjectId ? { _id: identifier } : { slug: identifier })
+      .select('category brand tags');
+
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
     const signals = [

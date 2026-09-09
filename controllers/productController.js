@@ -53,6 +53,33 @@ exports.getFeatured = async (req, res) => {
   }
 };
 
+// @GET /api/products/:id/related
+exports.getRelatedProducts = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).select('category brand tags');
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const signals = [
+      { category: product.category },
+      ...(product.brand ? [{ brand: product.brand }] : []),
+      ...(product.tags?.length ? [{ tags: { $in: product.tags } }] : []),
+    ];
+
+    const products = await Product.find({
+      _id: { $ne: product._id },
+      inStock: true,
+      $or: signals,
+    })
+      .sort({ isFeatured: -1, isNewArrival: -1, rating: -1, createdAt: -1 })
+      .limit(4)
+      .select('-reviews');
+
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // @GET /api/products/:id
 exports.getProduct = async (req, res) => {
   try {

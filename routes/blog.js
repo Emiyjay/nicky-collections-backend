@@ -11,11 +11,12 @@ const {
 const { protect, adminOnly } = require('../middleware/auth');
 
 router.get('/', getPosts);
-router.get('/:slug', getPost);
 
 router.get('/admin/all', protect, adminOnly, adminGetPosts);
 router.post('/admin', protect, adminOnly, adminCreatePost);
 router.put('/admin/:id', protect, adminOnly, adminUpdatePost);
 router.delete('/admin/:id', protect, adminOnly, adminDeletePost);
+
+router.get('/:slug', getPost);
 
 module.exports = router;

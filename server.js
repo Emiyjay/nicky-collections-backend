@@ -37,6 +37,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/site', require('./routes/site'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Nicky Collections API running 🛍️' });

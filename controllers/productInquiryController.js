@@ -3,6 +3,8 @@ const Product = require('../models/Product');
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'nickycollection01@gmail.com';
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const MAX_IMAGE_ATTACHMENTS = 4;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const clean = (value, max = 500) => String(value ?? '').trim().slice(0, max);
 
@@ -17,6 +19,47 @@ const normaliseImages = (images) => (Array.isArray(images) ? images : [])
   .map((image) => clean(image, 2000))
   .filter((url) => /^https?:\/\//i.test(url))
   .slice(0, 8);
+
+const extensionForType = (contentType = '') => {
+  const type = contentType.split(';')[0].trim().toLowerCase();
+  return ({
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif'
+  })[type] || 'jpg';
+};
+
+const fetchImageAttachments = async (images) => {
+  const attachments = [];
+
+  for (let index = 0; index < Math.min(images.length, MAX_IMAGE_ATTACHMENTS); index += 1) {
+    const url = images[index];
+
+    try {
+      const response = await fetch(url, { redirect: 'follow' });
+      if (!response.ok) continue;
+
+      const contentLength = Number(response.headers.get('content-length') || 0);
+      if (contentLength > MAX_IMAGE_BYTES) continue;
+
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      if (!/^image\/(jpeg|png|webp|gif)(?:;|$)/i.test(contentType)) continue;
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) continue;
+
+      attachments.push({
+        filename: `product-image-${index + 1}.${extensionForType(contentType)}`,
+        content: buffer.toString('base64')
+      });
+    } catch (error) {
+      console.warn(`Product image attachment ${index + 1} could not be fetched:`, error.message);
+    }
+  }
+
+  return attachments;
+};
 
 exports.createProductInquiry = async (req, res) => {
   try {
@@ -127,8 +170,12 @@ exports.createProductInquiry = async (req, res) => {
       '',
       'Product images:',
       ...images,
-      safeProductUrl ? `Product page: ${safeProductUrl}` : null
+      safeProductUrl ? `Product page: ${safeProductUrl}` : null,
+      '',
+      'Up to four product pictures are also attached to this email when the image files are available.'
     ].filter(Boolean).join('\n');
+
+    const attachments = await fetchImageAttachments(images);
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -142,7 +189,8 @@ exports.createProductInquiry = async (req, res) => {
         reply_to: email || undefined,
         subject: `[Nicky Collections] Product inquiry: ${product.name} — ${reference}`,
         html,
-        text
+        text,
+        ...(attachments.length ? { attachments } : {})
       })
     });
 
@@ -152,7 +200,11 @@ exports.createProductInquiry = async (req, res) => {
       return res.status(502).json({ message: 'The inquiry email could not be sent. Please try again.' });
     }
 
-    return res.status(201).json({ message: 'Product inquiry sent successfully.', reference });
+    return res.status(201).json({
+      message: 'Product inquiry sent successfully.',
+      reference,
+      attachments: attachments.length
+    });
   } catch (err) {
     console.error('Product inquiry error:', err);
     return res.status(500).json({ message: 'Unable to send product inquiry.' });
